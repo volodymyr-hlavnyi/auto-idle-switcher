@@ -1,0 +1,8 @@
+[project]
+name = "auto-idle"
+version = "0.1.0"
+description = "Auto switch power profile based on idle time"
+requires-python = ">=3.13"
+dependencies = [
+    "pyside6"
+]

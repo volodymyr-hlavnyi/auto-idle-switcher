@@ -29,9 +29,51 @@ AUTOSTART_FILE = os.path.join(AUTOSTART_DIR, "auto-idle.desktop")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_EXEC = f"{sys.executable} {os.path.join(BASE_DIR, os.path.basename(__file__))}"
 
+last_idle_seconds = 0
+
 
 def is_autostart_enabled():
     return os.path.exists(AUTOSTART_FILE)
+
+
+def format_tooltip(profile, idle_seconds):
+    mins = idle_seconds // 60
+    return (
+        "Auto Idle Power Switcher\n"
+        f"Mode: {profile}\n"
+        f"Idle: {mins} min"
+    )
+
+
+def show_status_message():
+    profile = get_current_profile() or "unknown"
+    mins = last_idle_seconds // 60
+
+    tray.showMessage(
+        "Auto Idle Power Switcher",
+        f"Mode: {profile}\nIdle: {mins} min",
+        QSystemTrayIcon.Information,
+        3000
+    )
+
+
+def get_status_message():
+    profile = get_current_profile() or "unknown"
+    mins = last_idle_seconds // 60
+
+    return f"Mode: {profile}\nIdle: {mins} min"
+
+
+def get_current_profile():
+    try:
+        out = subprocess.check_output(
+            ["powerprofilesctl", "get"],
+            text=True
+        ).strip()
+        return out
+    except Exception as e:
+        print("Failed to get current profile:", e)
+        return None
 
 
 def enable_autostart():
@@ -175,44 +217,84 @@ class SettingsWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle("Auto Idle Settings")
-        self.setFixedSize(320, 260)
+        self.setFixedSize(340, 280)
         self.setWindowIcon(QIcon(APP_ICON))
 
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
 
         tabs = QTabWidget()
-        layout.addWidget(tabs)
+        main_layout.addWidget(tabs)
 
-        # ---------- Settings Tab ----------
+        # =========================
+        # Settings Tab
+        # =========================
         settings_tab = QWidget()
         settings_layout = QVBoxLayout(settings_tab)
 
+        self.current_mode_label = QLabel("Current mode: unknown")
+        self.current_mode_label.setAlignment(Qt.AlignCenter)
+        self.current_mode_label.setStyleSheet("font-weight: bold;")
+
+        settings_layout.addWidget(self.current_mode_label)
+
+        # Autostart
         self.autostart_cb = QCheckBox("Start automatically on login")
         self.autostart_cb.setChecked(is_autostart_enabled())
         settings_layout.addWidget(self.autostart_cb)
 
-        settings_layout.addWidget(QLabel("Idle time (minutes):"))
+        # Idle time
+        settings_layout.addWidget(QLabel("Switch to idle mode after:"))
+
+        idle_row = QHBoxLayout()
         self.idle_spin = QSpinBox()
         self.idle_spin.setRange(1, 120)
         self.idle_spin.setValue(config["idle_minutes"])
-        settings_layout.addWidget(self.idle_spin)
+        idle_row.addWidget(self.idle_spin)
+        idle_row.addWidget(QLabel("minutes"))
+        idle_row.addStretch()
 
-        settings_layout.addWidget(QLabel("Mode when active:"))
+        settings_layout.addLayout(idle_row)
+
+        # Power profiles
+        settings_layout.addSpacing(6)
+        settings_layout.addWidget(QLabel("Power profiles:"))
+
+        profiles_layout = QVBoxLayout()
+
+        active_row = QHBoxLayout()
+        active_row.addWidget(QLabel("When active:"))
         self.active_mode = QComboBox()
         self.active_mode.addItems(["balanced", "performance"])
-        settings_layout.addWidget(self.active_mode)
+        active_row.addWidget(self.active_mode)
+        profiles_layout.addLayout(active_row)
 
-        settings_layout.addWidget(QLabel("Mode when idle:"))
+        idle_profile_row = QHBoxLayout()
+        idle_profile_row.addWidget(QLabel("When idle:"))
         self.idle_mode = QComboBox()
         self.idle_mode.addItems(["power-saver", "balanced"])
-        settings_layout.addWidget(self.idle_mode)
+        idle_profile_row.addWidget(self.idle_mode)
+        profiles_layout.addLayout(idle_profile_row)
+
+        settings_layout.addLayout(profiles_layout)
+
+        # Buttons
+        settings_layout.addStretch()
 
         btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
         self.apply_btn = QPushButton("Apply")
+        self.apply_btn.setDefault(True)
+        self.apply_btn.setEnabled(False)
         self.apply_btn.clicked.connect(self.apply)
 
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.close)
+
+        self.autostart_cb.stateChanged.connect(self.mark_dirty)
+        self.idle_spin.valueChanged.connect(self.mark_dirty)
+        self.active_mode.currentIndexChanged.connect(self.mark_dirty)
+        self.idle_mode.currentIndexChanged.connect(self.mark_dirty)
 
         btn_layout.addWidget(self.apply_btn)
         btn_layout.addWidget(self.close_btn)
@@ -221,25 +303,61 @@ class SettingsWindow(QWidget):
 
         tabs.addTab(settings_tab, "Settings")
 
-        # ---------- About Tab ----------
+        # =========================
+        # About Tab
+        # =========================
         about_tab = QWidget()
         about_layout = QVBoxLayout(about_tab)
 
         title = QLabel(f"<b>{APP_NAME}</b>")
-        version = QLabel(f"Version: {APP_VERSION}")
-        author = QLabel(f"Author: {APP_AUTHOR} ({APP_YEAR})")
-        link = QLabel(f'<a href="{APP_GITHUB}">{APP_GITHUB}</a>')
+        title.setAlignment(Qt.AlignCenter)
+
+        subtitle = QLabel("Automatic power profile switching")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet("color: gray;")
+
+        version = QLabel(f"Version {APP_VERSION}")
+        version.setAlignment(Qt.AlignCenter)
+
+        author = QLabel(f"© {APP_YEAR} {APP_AUTHOR}")
+        author.setAlignment(Qt.AlignCenter)
+
+        link = QLabel(f'<a href="{APP_GITHUB}">GitHub repository</a>')
+        link.setAlignment(Qt.AlignCenter)
         link.setOpenExternalLinks(True)
 
         about_layout.addStretch()
         about_layout.addWidget(title)
+        about_layout.addWidget(subtitle)
+        about_layout.addSpacing(8)
         about_layout.addWidget(version)
         about_layout.addWidget(author)
+        about_layout.addSpacing(8)
         about_layout.addWidget(link)
         about_layout.addStretch()
 
         tabs.addTab(about_tab, "About")
 
+    def mark_dirty(self):
+        self.apply_btn.setEnabled(True)
+
+    def update_current_mode(self, mode):
+        colors = {
+            "power-saver": "green",
+            "balanced": "orange",
+            "performance": "red",
+        }
+        color = colors.get(mode, "gray")
+        self.current_mode_label.setText(f"Current mode: {mode}")
+        self.current_mode_label.setStyleSheet(
+            f"font-weight: bold; color: {color};"
+        )
+
+    def refresh_current_mode_from_system(self):
+        profile = get_current_profile()
+        if profile:
+            self.update_current_mode(profile)
+            tray.setIcon(icon_for_mode(profile))
 
     def apply(self):
         config["idle_minutes"] = self.idle_spin.value()
@@ -252,6 +370,10 @@ class SettingsWindow(QWidget):
         else:
             disable_autostart()
 
+        # Immediately apply active profile
+        set_profile(config["active_mode"], idle=0)
+
+        self.apply_btn.setEnabled(False)
         print("Settings saved:", config)
 
 
@@ -267,6 +389,7 @@ if APP_ICON:
     app.setWindowIcon(QIcon(APP_ICON))
 
 settings = SettingsWindow()
+settings.update_current_mode(config["active_mode"])
 
 # tray = QSystemTrayIcon(QIcon.fromTheme("battery"))
 # tray = QSystemTrayIcon(icon_for_mode(config["active_mode"]))
@@ -274,21 +397,39 @@ tray = QSystemTrayIcon(QIcon(APP_ICON) if APP_ICON else icon_for_mode(config["ac
 tray.setToolTip("Auto Idle Power Switcher")
 
 menu = QMenu()
+menu.addAction(get_status_message(), None)
+menu.addSeparator()
 menu.addAction("Settings", settings.show)
 menu.addAction("Quit", app.quit)
 tray.setContextMenu(menu)
+tray.activated.connect(
+    lambda reason: show_status_message()
+    if reason == QSystemTrayIcon.Trigger else None
+)
+
 tray.show()
 
 
 # ---- Background timer ----
 def tick():
+    global last_idle_seconds
+
     idle = get_idle_seconds()
+    last_idle_seconds = idle
     limit = config["idle_minutes"] * 60
 
     if idle >= limit:
         set_profile(config["idle_mode"], idle)
     else:
         set_profile(config["active_mode"], idle)
+
+    # keep UI in sync with real system state
+    settings.refresh_current_mode_from_system()
+
+    # update tray tooltip from real state
+    current = get_current_profile()
+    if current:
+        tray.setToolTip(format_tooltip(current, idle))
 
 
 timer = QTimer()

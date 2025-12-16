@@ -1,0 +1,10 @@
+Package: auto-idle
+Version: 0.1.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: python3 (>= 3.12), python3-pyside6, power-profiles-daemon, gdbus
+Maintainer: Vladimir <vladimir@localhost>
+Description: Auto switch power profiles based on idle time
+ A tray application for GNOME that switches power profiles
+ automatically depending on user activity.

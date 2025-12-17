@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+APP_DIR="/usr/share/auto-idle"
+VENV_DIR="$APP_DIR/venv"
+
+echo "Removing Auto Idle Power Switcher environment..."
+
+if [ -d "$VENV_DIR" ]; then
+    rm -rf "$VENV_DIR"
+fi
+
+echo "Cleanup complete."

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Auto Idle Power Switcher
+Comment=Automatically switch power profiles based on idle time
+Exec=auto-idle
+Icon=auto-idle
+Terminal=false
+Categories=Utility;System;

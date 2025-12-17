@@ -31,3 +31,27 @@ Download the latest `.deb` from **GitHub Releases** and install:
 ```bash
 sudo dpkg -i auto-idle_0.1.0.deb
 sudo apt -f install
+```
+
+## Usage
+
+Launch from Applications menu or run:
+```bash
+auto-idle
+```
+
+## Settings are available from the tray icon.
+
+Requirements
+
+ - Ubuntu 24.04 (GNOME, Wayland)
+ - power-profiles-daemon
+
+## Author
+
+Volodymyr Hlavnyi (2025)
+https://github.com/volodymyr-hlavnyi
+
+## License
+
+MIT

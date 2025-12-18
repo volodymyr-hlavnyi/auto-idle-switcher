@@ -13,15 +13,40 @@ power profiles based on user idle time.
 - Clean uninstall
 - Native `.deb` installer for Ubuntu 24.04
 
+### Keyboard RGB (ASUS laptops)
+
+Auto Idle Power Switcher can optionally synchronize ASUS keyboard RGB lighting
+with the active power profile using **asusctl**.
+
+When enabled:
+
+- **Power-saver** → Green (low brightness)
+- **Balanced** → Yellow / orange (medium brightness)
+- **Performance** → Red (high brightness)
+
+Colors and brightness levels are fully configurable from the **Keyboard** tab
+in the settings window.
+
+If `asusctl` is not installed or the system is not an ASUS laptop, the Keyboard
+tab will display an informational message and RGB controls will be disabled
+automatically.
+
 ## Screenshots
 
 ### Tray icon and status
+
 ![Tray icon](screenshots/tray.png)
 
 ### Settings window
+
 ![Settings window](screenshots/settings.png)
 
+### Keyboard (RGB)
+
+![Keyboard RGB settings](screenshots/keyboard.png)
+
 ### About tab
+
 ![About tab](screenshots/about.png)
 
 ## Installation
@@ -36,6 +61,7 @@ sudo apt -f install
 ## Usage
 
 Launch from Applications menu or run:
+
 ```bash
 auto-idle
 ```
@@ -44,8 +70,8 @@ auto-idle
 
 Requirements
 
- - Ubuntu 24.04 (GNOME, Wayland)
- - power-profiles-daemon
+- Ubuntu 24.04 (GNOME, Wayland)
+- power-profiles-daemon
 
 ## Author
 

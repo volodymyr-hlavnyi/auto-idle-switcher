@@ -1,11 +1,10 @@
 Package: auto-idle
-Version: 0.1.2
+Version: 0.1.3
 Section: utils
 Priority: optional
 Architecture: amd64
-Depends: python3 (>= 3.10), libglib2.0-bin, power-profiles-daemon
-Suggests: asusctl
-Maintainer: Volodymyr Hlavnyi <volodymyr@github>
+Depends: python3 (>= 3.12), python3-pip, libglib2.0-bin, power-profiles-daemon
+Maintainer: Vladimir <vladimir@localhost>
 Description: Auto switch power profiles based on idle time
- A tray application that switches power profiles automatically
- and optionally syncs ASUS keyboard RGB with power mode.
+ A tray application for GNOME that switches power profiles
+ automatically depending on user activity.

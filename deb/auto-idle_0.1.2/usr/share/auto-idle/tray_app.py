@@ -1,4 +1,3 @@
-import shutil
 import sys
 import subprocess
 import time
@@ -9,14 +8,14 @@ import os
 from PySide6.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu, QWidget,
     QVBoxLayout, QLabel, QSpinBox, QComboBox, QPushButton, QCheckBox, QHBoxLayout,
-    QTabWidget, QLineEdit
+    QTabWidget
 )
-from PySide6.QtGui import QIcon, QDesktopServices, QPixmap, QPainter, QColor, QAction
+from PySide6.QtGui import QIcon, QDesktopServices, QPixmap, QPainter, QColor
 from PySide6.QtCore import QTimer, Qt, QUrl
 
 # ---- Config and paths ----
 APP_NAME = "Auto Idle Power Switcher"
-APP_VERSION = "0.1.2"
+APP_VERSION = "0.1.0"
 APP_AUTHOR = "Volodymyr Hlavnyi"
 APP_YEAR = "2025"
 APP_GITHUB = "https://github.com/volodymyr-hlavnyi"
@@ -32,17 +31,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_EXEC = f"{sys.executable} {os.path.join(BASE_DIR, os.path.basename(__file__))}"
 
 last_idle_seconds = 0
-
-DEFAULT_CONFIG = {
-    "idle_minutes": 20,
-    "active_mode": "balanced",
-    "idle_mode": "power-saver",
-    "keyboard": {
-        "power-saver": {"color": "#00ff00", "brightness": "low"},
-        "balanced": {"color": "#e61e00", "brightness": "med"},
-        "performance": {"color": "#ff0000", "brightness": "high"},
-    }
-}
 
 
 def is_autostart_enabled():
@@ -97,7 +85,7 @@ def enable_autostart():
             Name=Auto Idle Power Switcher
             Comment=Automatically switch power profiles based on idle time
             Exec={APP_EXEC}
-            Icon={icon_path_for_mode("balanced")}
+            Icon={APP_ICON}
             Terminal=false
             X-GNOME-Autostart-enabled=true
             """)
@@ -151,25 +139,17 @@ def icon_for_mode(mode):
 
 
 def load_config():
-    cfg = {}
-
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r") as f:
-                cfg = json.load(f)
+                return json.load(f)
         except Exception as e:
-            print("Failed to load config, using defaults:", e)
-
-    # merge defaults (migration-safe)
-    def merge(defaults, current):
-        for k, v in defaults.items():
-            if k not in current:
-                current[k] = v
-            elif isinstance(v, dict):
-                merge(v, current[k])
-        return current
-
-    return merge(DEFAULT_CONFIG, cfg)
+            print("Failed to load config:", e)
+    return {
+        "idle_minutes": 20,
+        "active_mode": "balanced",
+        "idle_mode": "power-saver",
+    }
 
 
 def save_config(cfg):
@@ -230,50 +210,6 @@ def set_profile(profile, idle):
     ts = time.strftime("%H:%M:%S")
     print(f"[{ts}] Switched to {profile} (idle {idle}s)")
 
-    set_keyboard_color_for_mode(profile)
-    print("Keyboard color set for mode:", profile)
-
-
-def set_keyboard_color_for_mode(mode):
-    if not is_asusctl_available():
-        return
-    kbd_cfg = config.get("keyboard", {}).get(mode)
-    if not kbd_cfg:
-        return
-
-    color = kbd_cfg.get("color", "").lower()
-    brightness = kbd_cfg.get("brightness", "med")
-
-    # basic validation: 6 hex chars
-    if len(color) != 7 or not all(c in "#0123456789abcdef" for c in color):
-        print(f"Invalid HEX color for {mode}: {color}")
-        return
-
-    try:
-        # set color
-        subprocess.run(
-            ["asusctl", "aura", "static", "-c", color.replace("#", "")],
-            check=True
-        )
-
-        # set brightness
-        subprocess.run(
-            ["asusctl", "-k", brightness],
-            check=True
-        )
-
-        print(
-            f"Keyboard set for {mode}: "
-            f"{color.upper()}, brightness={brightness}"
-        )
-
-    except Exception as e:
-        print("Failed to set keyboard RGB:", e)
-
-
-def is_asusctl_available():
-    return shutil.which("asusctl") is not None
-
 
 # ---- UI ----
 class SettingsWindow(QWidget):
@@ -281,28 +217,32 @@ class SettingsWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle("Auto Idle Settings")
-        self.setMinimumSize(420, 400)
+        self.setFixedSize(340, 280)
         self.setWindowIcon(QIcon(APP_ICON))
 
         main_layout = QVBoxLayout(self)
+
         tabs = QTabWidget()
         main_layout.addWidget(tabs)
 
-        # ==================================================
+        # =========================
         # Settings Tab
-        # ==================================================
+        # =========================
         settings_tab = QWidget()
         settings_layout = QVBoxLayout(settings_tab)
 
         self.current_mode_label = QLabel("Current mode: unknown")
         self.current_mode_label.setAlignment(Qt.AlignCenter)
         self.current_mode_label.setStyleSheet("font-weight: bold;")
+
         settings_layout.addWidget(self.current_mode_label)
 
+        # Autostart
         self.autostart_cb = QCheckBox("Start automatically on login")
         self.autostart_cb.setChecked(is_autostart_enabled())
         settings_layout.addWidget(self.autostart_cb)
 
+        # Idle time
         settings_layout.addWidget(QLabel("Switch to idle mode after:"))
 
         idle_row = QHBoxLayout()
@@ -312,8 +252,10 @@ class SettingsWindow(QWidget):
         idle_row.addWidget(self.idle_spin)
         idle_row.addWidget(QLabel("minutes"))
         idle_row.addStretch()
+
         settings_layout.addLayout(idle_row)
 
+        # Power profiles
         settings_layout.addSpacing(6)
         settings_layout.addWidget(QLabel("Power profiles:"))
 
@@ -323,141 +265,47 @@ class SettingsWindow(QWidget):
         active_row.addWidget(QLabel("When active:"))
         self.active_mode = QComboBox()
         self.active_mode.addItems(["balanced", "performance"])
-        self.active_mode.setCurrentText(config["active_mode"])
         active_row.addWidget(self.active_mode)
         profiles_layout.addLayout(active_row)
 
-        idle_row = QHBoxLayout()
-        idle_row.addWidget(QLabel("When idle:"))
+        idle_profile_row = QHBoxLayout()
+        idle_profile_row.addWidget(QLabel("When idle:"))
         self.idle_mode = QComboBox()
         self.idle_mode.addItems(["power-saver", "balanced"])
-        self.idle_mode.setCurrentText(config["idle_mode"])
-        idle_row.addWidget(self.idle_mode)
-        profiles_layout.addLayout(idle_row)
+        idle_profile_row.addWidget(self.idle_mode)
+        profiles_layout.addLayout(idle_profile_row)
 
         settings_layout.addLayout(profiles_layout)
 
-        self.kbd_preview = QLabel()
-        self.kbd_preview.setStyleSheet("color: gray;")
-        settings_layout.addWidget(self.kbd_preview)
-
+        # Buttons
         settings_layout.addStretch()
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
         self.apply_btn = QPushButton("Apply")
-        self.apply_btn.setEnabled(False)
         self.apply_btn.setDefault(True)
+        self.apply_btn.setEnabled(False)
         self.apply_btn.clicked.connect(self.apply)
 
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.close)
 
+        self.autostart_cb.stateChanged.connect(self.mark_dirty)
+        self.idle_spin.valueChanged.connect(self.mark_dirty)
+        self.active_mode.currentIndexChanged.connect(self.mark_dirty)
+        self.idle_mode.currentIndexChanged.connect(self.mark_dirty)
+
         btn_layout.addWidget(self.apply_btn)
         btn_layout.addWidget(self.close_btn)
+
         settings_layout.addLayout(btn_layout)
 
         tabs.addTab(settings_tab, "Settings")
 
-        # ==================================================
-        # Keyboard Tab
-        # ==================================================
-        kbd_tab = QWidget()
-        kbd_layout = QVBoxLayout(kbd_tab)
-
-        kbd_tab = QWidget()
-        kbd_layout = QVBoxLayout(kbd_tab)
-
-        if not is_asusctl_available():
-            warn = QLabel(
-                "Keyboard RGB control is unavailable.\n\n"
-                "The tool <b>asusctl</b> was not found on your system.\n\n"
-                "Please install it to enable keyboard lighting control."
-            )
-            warn.setWordWrap(True)
-            warn.setAlignment(Qt.AlignCenter)
-            warn.setStyleSheet("color: orange;")
-
-            install_hint = QLabel(
-                "<code>sudo apt install asusctl</code>"
-            )
-            install_hint.setAlignment(Qt.AlignCenter)
-            install_hint.setStyleSheet("color: gray;")
-
-            kbd_layout.addStretch()
-            kbd_layout.addWidget(warn)
-            kbd_layout.addSpacing(8)
-            kbd_layout.addWidget(install_hint)
-            kbd_layout.addStretch()
-
-        else:
-            # ---- existing Keyboard UI code goes here ----
-            kbd_layout.addWidget(QLabel("Keyboard RGB settings (HEX, no #):"))
-
-            self.kbd_fields = {}
-            kbd_layout.addWidget(QLabel("Keyboard RGB settings (HEX):"))
-            self.kbd_fields = {}
-
-            def add_kbd_row(label, key):
-                row = QHBoxLayout()
-                row.addWidget(QLabel(label))
-
-                color_input = QLineEdit()
-                color_input.setMaxLength(7)
-                color_input.setText(config["keyboard"][key]["color"])
-                row.addWidget(color_input)
-
-                swatch = QLabel()
-                swatch.setFixedSize(22, 22)
-                self.set_swatch_color(swatch, color_input.text())
-                row.addWidget(swatch)
-
-                brightness = QComboBox()
-                brightness.addItems(["off", "low", "med", "high"])
-                brightness.setCurrentText(config["keyboard"][key]["brightness"])
-                row.addWidget(brightness)
-
-                color_input.textChanged.connect(
-                    lambda text, s=swatch: self.set_swatch_color(s, text)
-                )
-
-                self.kbd_fields[key] = {
-                    "color": color_input,
-                    "brightness": brightness,
-                }
-
-                kbd_layout.addLayout(row)
-
-            add_kbd_row("Power-saver:", "power-saver")
-            add_kbd_row("Balanced:", "balanced")
-            add_kbd_row("Performance:", "performance")
-
-            kbd_layout.addStretch()
-            kbd_btn_layout = QHBoxLayout()
-            kbd_btn_layout.addStretch()
-
-            for fields in self.kbd_fields.values():
-                fields["color"].textChanged.connect(self.mark_dirty)
-                fields["brightness"].currentIndexChanged.connect(self.mark_dirty)
-
-            self.kbd_apply_btn = QPushButton("Apply")
-            self.kbd_apply_btn.setEnabled(False)
-            self.kbd_apply_btn.clicked.connect(self.apply)
-
-            self.kbd_close_btn = QPushButton("Close")
-            self.kbd_close_btn.clicked.connect(self.close)
-
-            kbd_btn_layout.addWidget(self.kbd_apply_btn)
-            kbd_btn_layout.addWidget(self.kbd_close_btn)
-
-            kbd_layout.addLayout(kbd_btn_layout)
-
-        tabs.addTab(kbd_tab, "Keyboard")
-
-        # ==================================================
+        # =========================
         # About Tab
-        # ==================================================
+        # =========================
         about_tab = QWidget()
         about_layout = QVBoxLayout(about_tab)
 
@@ -491,39 +339,8 @@ class SettingsWindow(QWidget):
 
         tabs.addTab(about_tab, "About")
 
-        # ==================================================
-        # Signals
-        # ==================================================
-        self.autostart_cb.stateChanged.connect(self.mark_dirty)
-        self.idle_spin.valueChanged.connect(self.mark_dirty)
-        self.active_mode.currentIndexChanged.connect(self.mark_dirty)
-        self.idle_mode.currentIndexChanged.connect(self.mark_dirty)
-
-        self.active_mode.currentIndexChanged.connect(self.update_keyboard_preview)
-        self.idle_mode.currentIndexChanged.connect(self.update_keyboard_preview)
-
-        self.update_keyboard_preview()
-        self.refresh_current_mode_from_system()
-
-    # --------------------------------------------------
-    # Helpers
-    # --------------------------------------------------
-    def set_swatch_color(self, swatch: QLabel, hex_str: str):
-        hex_str = (hex_str or "").strip().lower()
-
-        if len(hex_str) == 7 and all(c in "#0123456789abcdef" for c in hex_str):
-            swatch.setStyleSheet(
-                f"background-color: {hex_str}; border: 1px solid #555; border-radius: 4px;"
-            )
-        else:
-            swatch.setStyleSheet(
-                "background-color: transparent; border: 1px dashed #555; border-radius: 4px;"
-            )
-
     def mark_dirty(self):
         self.apply_btn.setEnabled(True)
-        if hasattr(self, "kbd_apply_btn"):
-            self.kbd_apply_btn.setEnabled(True)
 
     def update_current_mode(self, mode):
         colors = {
@@ -531,42 +348,22 @@ class SettingsWindow(QWidget):
             "balanced": "orange",
             "performance": "red",
         }
+        color = colors.get(mode, "gray")
         self.current_mode_label.setText(f"Current mode: {mode}")
         self.current_mode_label.setStyleSheet(
-            f"font-weight: bold; color: {colors.get(mode, 'gray')};"
-        )
-
-    def update_keyboard_preview(self):
-        mapping = {
-            "power-saver": "Green (Low)",
-            "balanced": "Yellow / Orange (Med)",
-            "performance": "Red (High)",
-        }
-
-        self.kbd_preview.setText(
-            "Keyboard sync preview:\n"
-            f"• When active: {mapping.get(self.active_mode.currentText())}\n"
-            f"• When idle: {mapping.get(self.idle_mode.currentText())}"
+            f"font-weight: bold; color: {color};"
         )
 
     def refresh_current_mode_from_system(self):
         profile = get_current_profile()
         if profile:
             self.update_current_mode(profile)
-
-            # tray may not exist yet during startup
-            if "tray" in globals():
-                tray.setIcon(icon_for_mode(profile))
+            tray.setIcon(icon_for_mode(profile))
 
     def apply(self):
         config["idle_minutes"] = self.idle_spin.value()
         config["active_mode"] = self.active_mode.currentText()
         config["idle_mode"] = self.idle_mode.currentText()
-
-        for mode, fields in self.kbd_fields.items():
-            config["keyboard"][mode]["color"] = fields["color"].text().lower()
-            config["keyboard"][mode]["brightness"] = fields["brightness"].currentText()
-
         save_config(config)
 
         if self.autostart_cb.isChecked():
@@ -574,15 +371,10 @@ class SettingsWindow(QWidget):
         else:
             disable_autostart()
 
-        # apply keyboard immediately
-        set_keyboard_color_for_mode(config["active_mode"])
-
-        # apply power profile only if active/idle modes changed
+        # Immediately apply active profile
         set_profile(config["active_mode"], idle=0)
 
         self.apply_btn.setEnabled(False)
-        if hasattr(self, "kbd_apply_btn"):
-            self.kbd_apply_btn.setEnabled(False)
         print("Settings saved:", config)
 
 
@@ -606,12 +398,10 @@ tray = QSystemTrayIcon(QIcon(APP_ICON) if APP_ICON else icon_for_mode(config["ac
 tray.setToolTip("Auto Idle Power Switcher")
 
 menu = QMenu()
-status_action = QAction(get_status_message())
 menu.addAction(get_status_message(), settings.show)
 menu.addSeparator()
 menu.addAction("Settings", settings.show)
 menu.addAction("Quit", app.quit)
-
 tray.setContextMenu(menu)
 tray.activated.connect(
     lambda reason: show_status_message()
@@ -641,8 +431,6 @@ def tick():
     current = get_current_profile()
     if current:
         tray.setToolTip(format_tooltip(current, idle))
-
-    status_action.setText(get_status_message())
 
 
 timer = QTimer()

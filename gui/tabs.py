@@ -1,13 +1,14 @@
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel,
     QSpinBox, QComboBox, QPushButton,
-    QCheckBox, QHBoxLayout, QLineEdit
+    QCheckBox, QHBoxLayout, QLineEdit, QMenu, QSystemTrayIcon
 )
 
 from PySide6.QtCore import Qt
 
 from config.config import settings
-from gui.helpers import is_autostart_enabled, is_asusctl_available
+from gui.helpers import is_autostart_enabled, is_asusctl_available, get_status_message, show_status_message
 
 
 def ui_show_info_not_found_asusctl(self, current_layout):
@@ -98,7 +99,16 @@ def ui_create_tab_keyboard(self, tabs):
         ui_show_info_not_found_asusctl(self, kbd_layout)
 
     else:
-        # ---- existing Keyboard UI code goes here ----
+        self.kbd_enable_cb = QCheckBox(
+            f"Enable power-mode based "
+            f"keyboard RGB "
+            f"(overrides cpu temperature RGB)"
+
+        )
+        self.kbd_enable_cb.setChecked(settings.keyboard["enabled"])
+
+        kbd_layout.addWidget(self.kbd_enable_cb)
+
         kbd_layout.addWidget(QLabel("Keyboard RGB settings (HEX):"))
         self.kbd_fields = {}
 
@@ -133,47 +143,17 @@ def ui_create_tab_temperature(self, tabs):
 
     )
     self.temp_enable_cb.setChecked(settings.temperature_rgb["enabled"])
+
     temp_layout.addWidget(self.temp_enable_cb)
 
     temp_layout.addSpacing(8)
-    temp_layout.addWidget(QLabel("Color scale (HEX, no #):"))
+    temp_layout.addWidget(QLabel("Color scale (HEX):"))
 
     self.temp_fields = {}
 
     points_layout = QVBoxLayout()
-
-    header = QHBoxLayout()
-    header.addWidget(QLabel(""))
-    header.addWidget(QLabel("HEX"))
-    header.addWidget(QLabel("Color"))
-    points_layout.addLayout(header)
-
     for temp in ["30", "40", "50", "60", "70", "80", "90", "100", "110"]:
-        row = QHBoxLayout()
-
-        row.addWidget(QLabel(f"{temp}°C"))
-
-        hex_input = QLineEdit()
-        hex_input.setMaxLength(6)
-        hex_input.setText(settings.temperature_rgb["points"][temp])
-        row.addWidget(hex_input)
-
-        swatch = QLabel()
-        swatch.setFixedSize(22, 22)
-        self.set_swatch_color(swatch, hex_input.text())
-        row.addWidget(swatch)
-
-        hex_input.textChanged.connect(
-            lambda text, s=swatch: self.set_swatch_color(s, text)
-        )
-        hex_input.textChanged.connect(self.mark_dirty)
-
-        self.temp_fields[temp] = hex_input
-
-        points_layout.addLayout(row)
-
-        swatch.setStyleSheet("border: 1px solid #555; border-radius: 4px;")
-        row.addStretch()
+        ui_add_temp_row(self, points_layout, temp, temp)
 
     temp_layout.addLayout(points_layout)
     temp_layout.addStretch()
@@ -221,11 +201,13 @@ def ui_create_tab_about(self, tabs):
 
 def ui_add_kbd_row(self, kbd_layout, label, key):
     row = QHBoxLayout()
-    row.addWidget(QLabel(label))
+    text_label = QLabel(label)
+    text_label.setFixedWidth(130)
+    row.addWidget(text_label)
 
     color_input = QLineEdit()
     color_input.setMaxLength(7)
-    color_input.setText(settings.keyboard[key]["color"])
+    color_input.setText(settings.keyboard["modes"][key]["color"])
     row.addWidget(color_input)
 
     swatch = QLabel()
@@ -235,7 +217,7 @@ def ui_add_kbd_row(self, kbd_layout, label, key):
 
     brightness = QComboBox()
     brightness.addItems(["off", "low", "med", "high"])
-    brightness.setCurrentText(settings.keyboard[key]["brightness"])
+    brightness.setCurrentText(settings.keyboard["modes"][key]["brightness"])
     row.addWidget(brightness)
 
     color_input.textChanged.connect(
@@ -248,6 +230,32 @@ def ui_add_kbd_row(self, kbd_layout, label, key):
     }
 
     kbd_layout.addLayout(row)
+
+
+def ui_add_temp_row(self, layout, temp, key):
+    row = QHBoxLayout()
+    text_label = QLabel(f"{temp}°C")
+    text_label.setFixedWidth(50)
+    row.addWidget(text_label)
+
+    hex_input = QLineEdit()
+    hex_input.setMaxLength(7)
+    hex_input.setText(settings.temperature_rgb["points"][temp])
+    row.addWidget(hex_input)
+
+    swatch = QLabel()
+    swatch.setFixedSize(22, 22)
+    self.set_swatch_color(swatch, hex_input.text())
+    row.addWidget(swatch)
+
+    hex_input.textChanged.connect(
+        lambda text, s=swatch: self.set_swatch_color(s, text)
+    )
+    hex_input.textChanged.connect(self.mark_dirty)
+
+    self.temp_fields[temp] = hex_input
+
+    layout.addLayout(row)
 
 
 def ui_add_kbd_buttons_apply_close(self, current_layout, attr_name):
@@ -266,3 +274,18 @@ def ui_add_kbd_buttons_apply_close(self, current_layout, attr_name):
     btn_layout.addWidget(btn)
     btn_layout.addWidget(close_btn)
     current_layout.addLayout(btn_layout)
+
+
+def ui_setup_tray_menu(window_settings, tray, app):
+    menu = QMenu()
+    status_action = QAction(get_status_message())
+    menu.addAction(get_status_message(), window_settings.show)
+    menu.addSeparator()
+    menu.addAction("Settings", window_settings.show)
+    menu.addAction("Quit", app.quit)
+
+    tray.setContextMenu(menu)
+    tray.activated.connect(
+        lambda reason: show_status_message(tray)
+        if reason == QSystemTrayIcon.Trigger else None
+    )

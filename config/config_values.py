@@ -21,23 +21,28 @@ DEFAULT_CONFIG = {
     "idle_minutes": 20,
     "active_mode": "balanced",
     "idle_mode": "power-saver",
+
     "keyboard": {
-        "power-saver": {"color": "#00ff00", "brightness": "low"},
-        "balanced": {"color": "#e61e00", "brightness": "med"},
-        "performance": {"color": "#ff0000", "brightness": "high"},
+        "enabled": True,
+        "modes": {
+            "power-saver": {"color": "#00ff00", "brightness": "low"},
+            "balanced": {"color": "#e61e00", "brightness": "med"},
+            "performance": {"color": "#ff0000", "brightness": "high"},
+        },
     },
+
     "temperature_rgb": {
         "enabled": False,
         "points": {
-            "30": "00ff00",
-            "40": "66ff00",
-            "50": "ccff00",
-            "60": "ffff00",
-            "70": "ffcc00",
-            "80": "ff9900",
-            "90": "ff6600",
-            "100": "ff3300",
-            "110": "ff0000",
+            "30": "#00ff00",
+            "40": "#66ff00",
+            "50": "#ccff00",
+            "60": "#ffff00",
+            "70": "#ffcc00",
+            "80": "#ff9900",
+            "90": "#ff6600",
+            "100": "#ff3300",
+            "110": "#ff0000",
         }
     }
 }

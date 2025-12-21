@@ -17,6 +17,7 @@ power profiles based on user idle time.
 
 Auto Idle Power Switcher can optionally synchronize ASUS keyboard RGB lighting
 with the active power profile using **asusctl**.
+Asus ROG laptops with RGB keyboards are supported (G814JIR tested).
 
 When enabled:
 

@@ -4,12 +4,13 @@ import subprocess
 import time
 
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QSystemTrayIcon
+from PySide6.QtWidgets import QSystemTrayIcon, QMessageBox
 
 from config.config import AUTOSTART_FILE, BASE_DIR, AUTOSTART_DIR, APP_EXEC, settings
 
-# ---- Shared state ----
+last_kbd_mode = None
 current_profile = None
+last_temp_color = None
 
 
 def is_autostart_enabled():
@@ -53,12 +54,22 @@ def enable_autostart():
             Terminal=false
             X-GNOME-Autostart-enabled=true
             """)
+    # QMessageBox.information(
+    #     None,
+    #     "Autostart enabled",
+    #     "Auto Idle Power Switcher will start automatically on login."
+    # )
     print("Autostart enabled")
 
 
 def disable_autostart():
     if os.path.exists(AUTOSTART_FILE):
         os.remove(AUTOSTART_FILE)
+        # QMessageBox.information(
+        #     None,
+        #     "Autostart disabled",
+        #     "Auto Idle Power Switcher will not start automatically on login."
+        # )
         print("Autostart disabled")
 
 
@@ -142,14 +153,6 @@ def set_profile(profile, idle):
 
     icon = icon_for_mode(profile)
 
-    # # update tray icon
-    # if tray:
-    #     tray.setIcon(icon)
-    #
-    # # update app + window icons
-    # app.setWindowIcon(icon)
-    # window_settings.setWindowIcon(icon)
-
     ts = time.strftime("%H:%M:%S")
     print(f"[{ts}] Switched to {profile} (idle {idle}s)")
 
@@ -158,9 +161,16 @@ def set_profile(profile, idle):
 
 
 def set_keyboard_color_for_mode(mode):
+    global last_kbd_mode
+
     if not is_asusctl_available():
         return
-    kbd_cfg = settings.keyboard.get(mode)
+    if not settings.keyboard.get("enabled", True):
+        return
+    if last_kbd_mode == mode:
+        return  # ← STOP reapplying every 5 seconds
+
+    kbd_cfg = settings.keyboard["modes"].get(mode)
     if not kbd_cfg:
         return
 
@@ -192,3 +202,72 @@ def set_keyboard_color_for_mode(mode):
 
     except Exception as e:
         print("Failed to set keyboard RGB:", e)
+
+
+def get_keyboard_color_by_cpu_temp() -> str | None:
+    """
+    Returns HEX color (with #) based on current CPU temperature,
+    or None if temperature RGB is disabled.
+    """
+    if not settings.temperature_rgb.get("enabled"):
+        return None
+
+    try:
+        temp_c = read_cpu_temperature()
+        print("Current CPU temperature:", temp_c)
+    except Exception as e:
+        print("Failed to read CPU temperature:", e)
+        return None
+
+    points = settings.temperature_rgb["points"]
+
+    # keys are strings like "30", "40", ...
+    thresholds = sorted(int(t) for t in points.keys())
+
+    selected = thresholds[0]
+    for t in thresholds:
+        if temp_c >= t:
+            selected = t
+        else:
+            break
+
+    return points[str(selected)]
+
+
+def apply_temperature_keyboard_rgb():
+    global last_temp_color
+
+    color = get_keyboard_color_by_cpu_temp()
+    if not color:
+        last_temp_color = None
+        return
+
+    if color == last_temp_color:
+        return  # nothing changed, do not spam asusctl
+
+    try:
+        subprocess.run(
+            ["asusctl", "aura", "static", "-c", color.replace("#", "")],
+            check=True
+        )
+        last_temp_color = color
+    except Exception as e:
+        print("Failed to apply temperature RGB:", e)
+
+
+def read_cpu_temperature() -> int | None:
+    base = "/sys/class/thermal"
+
+    for zone in os.listdir(base):
+        type_path = os.path.join(base, zone, "type")
+        temp_path = os.path.join(base, zone, "temp")
+
+        try:
+            with open(type_path) as f:
+                if f.read().strip() == "x86_pkg_temp":
+                    with open(temp_path) as tf:
+                        return int(tf.read().strip()) // 1000
+        except OSError:
+            continue
+
+    return None

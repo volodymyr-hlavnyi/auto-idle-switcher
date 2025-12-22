@@ -8,7 +8,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from config.config import settings
-from gui.helpers import is_autostart_enabled, is_asusctl_available, get_status_message, show_status_message
+from gui.helpers import (
+    is_autostart_enabled, is_asusctl_available,
+    get_status_message, show_status_message
+)
 
 
 def ui_show_info_not_found_asusctl(self, current_layout):
@@ -152,7 +155,7 @@ def ui_create_tab_temperature(self, tabs):
     self.temp_fields = {}
 
     points_layout = QVBoxLayout()
-    for temp in ["30", "40", "50", "60", "70", "80", "90", "100", "110"]:
+    for temp in settings.temperature_rgb["points"]:
         ui_add_temp_row(self, points_layout, temp, temp)
 
     temp_layout.addLayout(points_layout)
@@ -278,7 +281,6 @@ def ui_add_kbd_buttons_apply_close(self, current_layout, attr_name):
 
 def ui_setup_tray_menu(window_settings, tray, app):
     menu = QMenu()
-    status_action = QAction(get_status_message())
     menu.addAction(get_status_message(), window_settings.show)
     menu.addSeparator()
     menu.addAction("Settings", window_settings.show)

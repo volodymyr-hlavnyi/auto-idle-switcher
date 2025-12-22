@@ -6,11 +6,13 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import QTimer
 
-from config.config_service import load_settings, save_settings
+from config.config_service import load_settings
 from gui.base_app import APP_ICON, MainWindowAppGUI
-from gui.helpers import icon_for_mode, get_idle_seconds, set_profile, get_current_profile, format_tooltip, \
-    get_status_message, show_status_message, get_keyboard_color_by_cpu_temp, apply_temperature_keyboard_rgb, \
-    set_keyboard_color_for_mode
+from gui.helpers import (
+    icon_for_mode, get_idle_seconds, set_profile,
+    get_current_profile,get_status_message,
+    get_keyboard_color_by_cpu_temp, read_cpu_temperature
+)
 from gui.tabs import ui_setup_tray_menu
 
 settings = load_settings()
@@ -27,26 +29,9 @@ if APP_ICON:
 window_settings = MainWindowAppGUI()
 window_settings.update_current_mode(settings.active_mode)
 
-# tray = QSystemTrayIcon(QIcon.fromTheme("battery"))
-# tray = QSystemTrayIcon(icon_for_mode(config["active_mode"]))
 tray = QSystemTrayIcon(QIcon(APP_ICON) if APP_ICON else icon_for_mode(settings.active_mode))
 tray.setToolTip("Auto Idle Power Switcher")
-
-# menu = QMenu()
-# status_action = QAction(get_status_message())
-# menu.addAction(get_status_message(), window_settings.show)
-# menu.addSeparator()
-# menu.addAction("Settings", window_settings.show)
-# menu.addAction("Quit", app.quit)
-#
-# tray.setContextMenu(menu)
-# tray.activated.connect(
-#     lambda reason: show_status_message(tray)
-#     if reason == QSystemTrayIcon.Trigger else None
-# )
-
 ui_setup_tray_menu(window_settings, tray, app)
-
 tray.show()
 
 
@@ -77,7 +62,10 @@ def tick():
 
     window_settings.update_current_mode(get_current_profile())
 
-    print(f"idle={idle}s limit={limit}s is_idle_state={is_idle_state}")
+    print(f""
+          f"idle={idle}s "
+          f"limit={limit}s is_idle_state={is_idle_state} "
+          f"CPU(t)={read_cpu_temperature()} color={get_keyboard_color_by_cpu_temp()}")
 
 
 

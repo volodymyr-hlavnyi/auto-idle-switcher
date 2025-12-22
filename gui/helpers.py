@@ -214,7 +214,7 @@ def get_keyboard_color_by_cpu_temp() -> str | None:
 
     try:
         temp_c = read_cpu_temperature()
-        print("Current CPU temperature:", temp_c)
+        # print("Current CPU temperature:", temp_c)
     except Exception as e:
         print("Failed to read CPU temperature:", e)
         return None
@@ -225,6 +225,7 @@ def get_keyboard_color_by_cpu_temp() -> str | None:
     thresholds = sorted(int(t) for t in points.keys())
 
     selected = thresholds[0]
+
     for t in thresholds:
         if temp_c >= t:
             selected = t
@@ -237,19 +238,25 @@ def get_keyboard_color_by_cpu_temp() -> str | None:
 def apply_temperature_keyboard_rgb():
     global last_temp_color
 
+    if not settings.temperature_rgb.get("enabled"):
+        last_temp_color = None
+        # restore power-mode keyboard RGB
+        set_keyboard_color_for_mode(get_current_profile())
+        return
+
     color = get_keyboard_color_by_cpu_temp()
     if not color:
-        last_temp_color = None
         return
 
     if color == last_temp_color:
-        return  # nothing changed, do not spam asusctl
+        return
 
     try:
         subprocess.run(
             ["asusctl", "aura", "static", "-c", color.replace("#", "")],
             check=True
         )
+        print("asusctl", "aura", "static", "-c", color.replace("#", ""))
         last_temp_color = color
     except Exception as e:
         print("Failed to apply temperature RGB:", e)

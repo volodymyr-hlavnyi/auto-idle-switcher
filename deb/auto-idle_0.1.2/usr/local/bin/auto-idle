@@ -1,2 +1,2 @@
 #!/bin/sh
-exec python3 /usr/share/auto-idle/tray_app.py
+exec python3 /usr/share/auto-idle/app-auto-idle-power.py

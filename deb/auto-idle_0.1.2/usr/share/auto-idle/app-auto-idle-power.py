@@ -1,10 +1,10 @@
 import sys
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu,
 )
-from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import QTimer
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtCore import QTimer
 
 from config.config_service import load_settings
 from gui.base_app import APP_ICON, MainWindowAppGUI

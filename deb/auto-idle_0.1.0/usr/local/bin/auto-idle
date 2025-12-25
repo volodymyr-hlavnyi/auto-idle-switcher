@@ -1,6 +1,0 @@
-#!/bin/bash
-APP_DIR="/usr/share/auto-idle"
-VENV_DIR="$APP_DIR/venv"
-
-exec "$VENV_DIR/bin/python" "$APP_DIR/tray_app.py"
-

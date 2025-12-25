@@ -1,0 +1,76 @@
+.
+├── app-auto-idle-power.py
+├── build
+│   └── main
+├── check_build.sh
+├── config
+│   ├── config.py
+│   ├── config_service.py
+│   ├── config_values.py
+│   ├── __init__.py
+│   └── __pycache__
+│       ├── config.cpython-313.pyc
+│       ├── config_service.cpython-313.pyc
+│       ├── config_values.cpython-313.pyc
+│       └── __init__.cpython-313.pyc
+├── deb
+│   ├── auto-idle_0.1.0
+│   │   ├── DEBIAN
+│   │   │   ├── control
+│   │   │   ├── postinst
+│   │   │   └── prerm
+│   │   └── usr
+│   │       ├── bin
+│   │       ├── local
+│   │       └── share
+│   ├── auto-idle_0.1.0.deb
+│   ├── auto-idle_0.1.2
+│   │   ├── DEBIAN
+│   │   │   ├── control
+│   │   │   ├── postinst
+│   │   │   └── prerm
+│   │   └── usr
+│   │       ├── bin
+│   │       ├── local
+│   │       └── share
+│   ├── auto-idle_0.1.2.deb
+│   ├── auto-idle_0.1.3
+│   │   ├── DEBIAN
+│   │   │   ├── control
+│   │   │   ├── postinst
+│   │   │   └── prerm
+│   │   └── usr
+│   │       ├── bin
+│   │       ├── local
+│   │       └── share
+│   └── auto-idle_0.1.3.deb
+├── dist
+├── gui
+│   ├── base_app.py
+│   ├── helpers.py
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── base_app.cpython-313.pyc
+│   │   ├── helpers.cpython-313.pyc
+│   │   ├── __init__.cpython-313.pyc
+│   │   └── tabs.cpython-313.pyc
+│   └── tabs.py
+├── icons
+│   ├── battery_green.svg
+│   ├── battery_red.svg
+│   └── battery_yellow.svg
+├── idle-test.py
+├── main.spec
+├── make_build.sh
+├── pyproject.toml
+├── README.md
+├── screenshots
+│   ├── about.png
+│   ├── keyboard.png
+│   ├── settings.png
+│   └── tray.png
+├── structure.txt
+├── temp_check.py
+└── uv.lock
+
+29 directories, 45 files

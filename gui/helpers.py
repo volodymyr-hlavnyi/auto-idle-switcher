@@ -177,7 +177,7 @@ def set_keyboard_color_for_mode(mode):
     color = kbd_cfg.get("color", "").lower()
     brightness = kbd_cfg.get("brightness", "med")
 
-    # basic validation: 6 hex chars
+    # basic validation: 7 hex chars
     if len(color) != 7 or not all(c in "#0123456789abcdef" for c in color):
         print(f"Invalid HEX color for {mode}: {color}")
         return
@@ -250,10 +250,16 @@ def apply_temperature_keyboard_rgb():
 
     if color == last_temp_color:
         return
+    brightness = "med"  # kbd_cfg.get("brightness", "med")
 
     try:
         subprocess.run(
             ["asusctl", "aura", "static", "-c", color.replace("#", "")],
+            check=True
+        )
+        # set brightness
+        subprocess.run(
+            ["asusctl", "-k", brightness],
             check=True
         )
         print("asusctl", "aura", "static", "-c", color.replace("#", ""))

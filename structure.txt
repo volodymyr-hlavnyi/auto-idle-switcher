@@ -14,16 +14,6 @@
 │       ├── config_values.cpython-313.pyc
 │       └── __init__.cpython-313.pyc
 ├── deb
-│   ├── auto-idle_0.1.0
-│   │   ├── DEBIAN
-│   │   │   ├── control
-│   │   │   ├── postinst
-│   │   │   └── prerm
-│   │   └── usr
-│   │       ├── bin
-│   │       ├── local
-│   │       └── share
-│   ├── auto-idle_0.1.0.deb
 │   ├── auto-idle_0.1.2
 │   │   ├── DEBIAN
 │   │   │   ├── control
@@ -31,8 +21,19 @@
 │   │   │   └── prerm
 │   │   └── usr
 │   │       ├── bin
+│   │       │   └── auto-idle
 │   │       ├── local
+│   │       │   └── bin
+│   │       │       └── auto-idle
 │   │       └── share
+│   │           ├── applications
+│   │           │   └── auto-idle.desktop
+│   │           ├── auto-idle
+│   │           │   ├── app-auto-idle-power.py
+│   │           │   ├── icons
+│   │           │   └── __init__.py
+│   │           └── icons
+│   │               └── hicolor
 │   ├── auto-idle_0.1.2.deb
 │   ├── auto-idle_0.1.3
 │   │   ├── DEBIAN
@@ -41,8 +42,18 @@
 │   │   │   └── prerm
 │   │   └── usr
 │   │       ├── bin
-│   │       ├── local
+│   │       │   └── auto-idle
 │   │       └── share
+│   │           ├── applications
+│   │           │   └── auto-idle.desktop
+│   │           ├── auto-idle
+│   │           │   ├── app-auto-idle-power.py
+│   │           │   ├── config
+│   │           │   ├── gui
+│   │           │   ├── icons
+│   │           │   └── __init__.py
+│   │           └── icons
+│   │               └── hicolor
 │   └── auto-idle_0.1.3.deb
 ├── dist
 ├── gui
@@ -64,6 +75,7 @@
 ├── make_build.sh
 ├── pyproject.toml
 ├── README.md
+├── RELEASE_v0.1.3.md
 ├── screenshots
 │   ├── about.png
 │   ├── keyboard.png
@@ -73,4 +85,4 @@
 ├── temp_check.py
 └── uv.lock
 
-29 directories, 45 files
+35 directories, 51 files

@@ -2,11 +2,13 @@
 set -e
 
 PKG_NAME="auto-idle"
-NEW_VERSION="0.1.3"
-OLD_VERSION="0.1.2"
+
+NEW_VERSION=$(python3 -c "from config.config_values import APP_VERSION; print(APP_VERSION)")
+OLD_VERSION="0.1.3"
 
 OLD_DEB="deb/${PKG_NAME}_${OLD_VERSION}"
 NEW_DEB="deb/${PKG_NAME}_${NEW_VERSION}"
+
 
 echo "Building ${PKG_NAME} ${NEW_VERSION}"
 
